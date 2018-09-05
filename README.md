@@ -8,4 +8,4 @@ To install the package run
 devtools::install_github('tobiasmadsen/ebadimex')
 ```
 
-The package includes a small [tutorial](inst/doc/ebadimex-tutorial.html) covering the basic functionalities in the package.
+The package includes a small [tutorial](inst/doc/ebadimex-tutorial.pdf) covering the basic functionalities in the package.
