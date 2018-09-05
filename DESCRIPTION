@@ -1,12 +1,17 @@
 Package: ebadimex
 Type: Package
-Title: What the Package Does in One 'Title Case' Line
+Title: An Empirical Bayes Approach to Detect Joint Differential Expression and Methylation
 Version: 1.0
 Date: 2017-08-28
-Author: Your Name
-Maintainer: Your Name <your@email.com>
-Description: One paragraph description of what the package does as one or more full sentences.
+Author: Tobias Madsen
+Maintainer: Tobias Madsen <tobiasmadsen@email.com>
+Description: 
+  Tests for differential expression and differential methylation using moderated versions of standard statistical tests.
+  Differential expression can be tested using either a moderated t-test or a moderated Welch t-test.
 License: GPL (>= 2)
-Imports: ggplot2 
-Suggests: testthat
+Imports: ggplot2, mvtnorm, dplyr
+Suggests: testthat,
+    knitr,
+    rmarkdown
 RoxygenNote: 6.0.1
+VignetteBuilder: knitr
