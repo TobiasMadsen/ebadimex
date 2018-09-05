@@ -1,0 +1,89 @@
+---
+title: "EBADIMEX"
+author: "Tobias Madsen"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+#### Data
+First load the `ebadimex`-package
+
+```{r loadPackage}
+library(ebadimex)
+```
+
+In the package we have included a subset of the data analyzed in our paper, with 5 normals and 10 tumours. The `brca` data set is a list with tree elements; `is_tumour` containing a vector indicating whether the $i$'th sample a tumour or normal, `sample_names` containing the name of the TCGA sample and finally `expr_meth` which is a list with expression (expr), promotor methylation (pr) and genebody methylation (gb) for a set of 16218 genes.
+
+```{r}
+data(brca)
+brca$expr_meth$PTEN
+```
+
+#### Priors
+Before analyzing any individual gene, we train the empirical priors with the two methods `exprPrior` and `methPrior`. The expression prior is a function of the expression level and the figure shows the 25th and 75th percentile and the median of the prior distribution overlayed over point estimates of the expression variance for each gene. 
+
+```{r warning=FALSE}
+ep <- exprPrior(brca$expr_meth)
+```
+
+The methylation prior consists of the scale matrix and degrees of freedom for an [inverse Wishart distribution](https://en.wikipedia.org/wiki/Inverse-Wishart_distribution)
+```{r priorMeth}
+mp <- methPrior(brca$expr_meth, brca$is_tumour)
+mp
+```
+
+#### Differential Regulation
+To test for differential expression use the `testDE` function. 
+```{r differentialExpression}
+pten_expr <- brca$expr_meth$PTEN[,'expr']
+
+testDE(pten_expr, grouping = brca$is_tumour, prior = ep)
+```
+The output shows the log p-values for the moderated t-test (p_location), the moderated Welch t-test (p_location_welch) and the moderated f-test for equal variance (p_scale).
+
+Test for differential methylation use `testDM` function.
+```{r differentialMethylation}
+pklr_expr <- brca$expr_meth$PKLR[,'expr']
+pklr_meth <- brca$expr_meth$PKLR[,c('pr','gb')]
+
+testDM(meth = pklr_meth, expr = pklr_expr, grouping = brca$is_tumour, prior = mp)
+```
+The output shows the log p-value for the moderated F-test for shift in location (p_location) and the corresponding f-test statistic. The test for differential methylation corrects for the expression level. Thus the two p-values from testing differential expression and differential methylation can be combined using Fisher's method.
+
+#### Classification
+For classification pick a candidate gene and fit both the expression and the methylation model using `fitExpr` and `fitMeth`
+
+```{r fitExpr}
+pten_expr <- brca$expr_meth$PTEN[,'expr']
+pten_meth <- brca$expr_meth$PTEN[,c('pr','gb')]
+exprFit <- fitExpr(pten_expr, grouping = brca$is_tumour, prior = ep)
+methFit <- fitMeth(meth = pten_meth, expr = pten_expr, grouping = brca$is_tumour, prior = mp)
+```
+
+A new samples can then be classified be evaluating the probability of the data under the model fit for the tumours and normals respectively and then Bayes factor. 
+
+```{r computeLoglik}
+new_sample_expr_meth <- c(1.4148645950, -4.622975, 2.75108451)
+
+exprLogLikRatio <- exprLogLik(expr = new_sample_expr_meth[1], 
+                              param = exprFit, 
+                              same_sd = F) 
+methLogLikRatio <- methLogLik(expr = new_sample_expr_meth[1],
+                              meth = new_sample_expr_meth[2:3],
+                              param = methFit$param)
+
+methLogLikRatio + exprLogLikRatio
+```
+
+The reported log likelihood ratios are the `is_tumour`-true group (tumours) against `is_tumour`-false (normals). The above negative log lik ratio suggest that the new sample is more likely to belong to the normal group (ignoring imbalance in the prior distribution).
